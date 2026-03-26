@@ -43,11 +43,15 @@ jobs:
           # Find apksigner tool
           APKSIGNER=$(find $ANDROID_HOME/build-tools -name "apksigner" | sort | tail -n 1)
           
-          # Sign the unsigned APK
-          $APKSIGNER sign --ks my-release-key.keystore --ks-pass pass:password --ks-key-alias my-key-alias ./mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          # Find the exact APK file Gradle generated
+          APK_PATH=$(find ./mobile/android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          echo "Found APK at: $APK_PATH"
+          
+          # Sign the APK
+          $APKSIGNER sign --ks my-release-key.keystore --ks-pass pass:password --ks-key-alias my-key-alias "$APK_PATH"
           
           # Rename for final upload
-          mv ./mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk ./mobile/android/app/build/outputs/apk/release/Interceptor-App.apk
+          mv "$APK_PATH" ./mobile/android/app/build/outputs/apk/release/Interceptor-App.apk
 
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
