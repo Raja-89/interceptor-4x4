@@ -35,8 +35,22 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease
 
-      - name: Upload APK to GitHub
+      - name: Create Test Keystore and Sign APK
+        run: |
+          # Generate a generic signing key so Android allows it to be installed
+          keytool -genkey -v -keystore my-release-key.keystore -alias my-key-alias -keyalg RSA -keysize 2048 -validity 10000 -storepass password -keypass password -dname "CN=Interceptor, OU=App, O=User, L=City, S=State, C=US"
+          
+          # Find apksigner tool
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name "apksigner" | sort | tail -n 1)
+          
+          # Sign the unsigned APK
+          $APKSIGNER sign --ks my-release-key.keystore --ks-pass pass:password --ks-key-alias my-key-alias ./mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          
+          # Rename for final upload
+          mv ./mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk ./mobile/android/app/build/outputs/apk/release/Interceptor-App.apk
+
+      - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
           name: Interceptor-App-APK
-          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          path: ./mobile/android/app/build/outputs/apk/release/Interceptor-App.apk
