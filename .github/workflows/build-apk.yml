@@ -1,0 +1,42 @@
+name: Build Android APK Instantly
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Install dependencies
+        working-directory: ./mobile
+        run: npm install
+
+      - name: Generate Android folder (Prebuild)
+        working-directory: ./mobile
+        run: npx expo prebuild --platform android --clean
+
+      - name: Build APK Serverless (Fast)
+        working-directory: ./mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Upload APK to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: Interceptor-App-APK
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
