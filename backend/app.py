@@ -193,6 +193,95 @@ async def health_check():
     }
 
 
+@app.post("/chat")
+async def chat_with_bot(request: Request):
+    """Chat endpoint for AI assistant"""
+    try:
+        body = await request.json()
+        message = body.get("message", "")
+        context = body.get("context", {})
+        
+        if not message:
+            raise HTTPException(status_code=400, detail="Message is required")
+        
+        # Generate intelligent response based on message and context
+        response = generate_chat_response(message.lower(), context)
+        
+        return {
+            "response": response,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
+
+
+def generate_chat_response(message: str, context: dict) -> str:
+    """Generate intelligent chatbot responses"""
+    last_analysis = context.get("lastAnalysis", {})
+    
+    # Analysis-specific questions
+    if any(word in message for word in ['last', 'recent', 'previous', 'result', 'my analysis']):
+        if last_analysis:
+            pred = last_analysis.get('prediction', 'unknown')
+            conf = last_analysis.get('confidence', 0) * 100
+            models = last_analysis.get('models_used', [])
+            time = last_analysis.get('processing_time', 0)
+            faces = last_analysis.get('faces_analyzed', 0)
+            
+            if 'why' in message or 'explain' in message:
+                return f"Your video was classified as {pred.upper()} with {conf:.1f}% confidence. We analyzed {faces} face(s) using {len(models)} models: {', '.join(models)}. The high confidence comes from consistent predictions across multiple models examining different aspects like compression artifacts, lighting patterns, and temporal inconsistencies."
+            
+            return f"Your last analysis: Video classified as {pred.upper()} with {conf:.1f}% confidence. Processed in {time}s using {len(models)} models: {', '.join(models)}. {faces} face(s) were analyzed."
+        return "You haven't analyzed any videos yet. Go to the Home tab to upload a video and get started!"
+    
+    # How it works
+    if 'how' in message and any(word in message for word in ['work', 'detect', 'analyze']):
+        return "Interceptor uses an agentic AI approach:\n\n1. Baseline screening: Initial analysis by a generalist model\n2. Intelligent routing: Video characteristics determine which specialist models to use\n3. Specialist analysis: 6 expert models examine specific manipulation types\n4. Ensemble decision: Final verdict based on weighted consensus\n\nThis multi-model approach achieves 94.9% accuracy!"
+    
+    # Confidence questions
+    if any(word in message for word in ['confidence', 'accurate', 'sure', 'trust']):
+        if last_analysis:
+            conf = last_analysis.get('confidence', 0) * 100
+            level = last_analysis.get('analysis', {}).get('routing', {}).get('confidence_level', 'medium')
+            return f"Your video's confidence score is {conf:.1f}%, which is {level} confidence. Scores above 85% are high confidence, 70-85% are medium, and below 70% are low. Our system achieves 94.9% overall accuracy by combining predictions from multiple specialist models."
+        return "Confidence scores represent how certain our models are about predictions. We achieve 94.9% overall accuracy by using 6 specialist models. Scores above 85% are considered high confidence."
+    
+    # Deepfake explanation
+    if any(word in message for word in ['fake', 'deepfake', 'manipulat']):
+        return "Deepfakes are AI-generated or manipulated videos created using deep learning. Our system detects them by analyzing:\n\n• Facial inconsistencies\n• Compression artifacts\n• Lighting anomalies\n• Audio-visual sync\n• Temporal coherence\n\nEach specialist model focuses on specific manipulation signatures."
+    
+    # Models
+    if 'model' in message or 'specialist' in message:
+        if last_analysis and last_analysis.get('models_used'):
+            models = last_analysis.get('models_used', [])
+            return f"For your video, we used: {', '.join(models)}.\n\nAll 6 specialists:\n• BG-Model: Background inconsistencies\n• AV-Model: Audio-visual synchronization\n• CM-Model: Compression artifacts\n• RR-Model: Resolution anomalies\n• LL-Model: Low-light manipulation\n• TM-Model: Temporal inconsistencies"
+        return "We have 6 specialist models:\n\n• BG-Model (86.25%): Background analysis\n• AV-Model (93.00%): Audio-visual sync\n• CM-Model (80.83%): Compression artifacts\n• RR-Model (85.00%): Resolution patterns\n• LL-Model (93.42%): Low-light detection\n• TM-Model (78.50%): Temporal analysis"
+    
+    # Help
+    if 'help' in message or 'what can' in message:
+        return "I can help you with:\n\n• Understanding your analysis results\n• Explaining confidence scores\n• Details about our detection models\n• How deepfake detection works\n• Tips for better results\n\nJust ask me anything!"
+    
+    # Greetings
+    if any(word in message for word in ['hi', 'hello', 'hey']):
+        if last_analysis:
+            pred = last_analysis.get('prediction', 'unknown')
+            conf = last_analysis.get('confidence', 0) * 100
+            return f"Hello! I see you recently analyzed a video ({pred.upper()}, {conf:.1f}% confidence). What would you like to know about it?"
+        return "Hello! I'm your AI assistant for deepfake detection. Upload a video in the Home tab, and I can help you understand the results!"
+    
+    # Thanks
+    if 'thank' in message:
+        return "You're welcome! Feel free to ask if you have more questions about your analysis or deepfake detection."
+    
+    # Default
+    if last_analysis:
+        pred = last_analysis.get('prediction', 'unknown')
+        conf = last_analysis.get('confidence', 0) * 100
+        return f"I'm here to help you understand your analysis results! Your last video was {pred.upper()} with {conf:.1f}% confidence. You can ask me about:\n\n• Why this prediction was made\n• What the confidence score means\n• Which models were used\n• How to improve detection accuracy"
+    
+    return "I'm your AI assistant for deepfake detection! I can explain how our system works, discuss confidence scores, and help you understand analysis results. Upload a video in the Home tab to get started!"
+
+
 @app.post("/predict")
 async def predict_deepfake(file: UploadFile = File(...)):
     """Analyze video for deepfake detection"""
